@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, MapPin, Camera, CheckCircle2, Phone, Navigation, Copy } from "lucide-react";
+import { AlertTriangle, MapPin, Camera, CheckCircle2, Phone, Navigation, Copy, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -14,9 +14,11 @@ import {
 } from "@/components/ui/select";
 import { createAccidentReport, getLatestAccidentReport, AccidentReport as AccidentReportType } from "@/lib/localStorage";
 import MapComponent, { MapMarker } from "@/components/MapComponent";
+import { toast } from "sonner";
 
 export default function AccidentReport() {
   const [reported, setReported] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [report, setReport] = useState<AccidentReportType | null>(null);
   const [formData, setFormData] = useState({
     location: "",
@@ -41,14 +43,15 @@ export default function AccidentReport() {
           const { latitude, longitude } = position.coords;
           setReportCoords({ lat: latitude, lng: longitude });
           setFormData({ ...formData, location: "Current GPS Location" });
+          toast.success("Location captured!");
         },
         (error) => {
           console.error("Error getting location:", error);
-          alert("Unable to get your location. Please enable location services.");
+          toast.error("Unable to get your location. Please enable location services.");
         }
       );
     } else {
-      alert("Geolocation is not supported by this browser.");
+      toast.error("Geolocation is not supported by this browser.");
     }
   };
 
@@ -57,12 +60,60 @@ export default function AccidentReport() {
     setFormData({ ...formData, location: "Custom Location from Map" });
   };
 
-  const handleSubmitReport = () => {
+  const sendAlertToServer = async (location: { lat: number; lng: number }) => {
+    setIsSending(true);
+    try {
+      // Using a hardcoded patientId for MVP purposes, as discussed.
+      const patientId = '12345'; 
+      
+      const response = await fetch('http://localhost:3001/api/send-alert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ patientId, location }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'An unknown error occurred.');
+      }
+
+      toast.success("Server notified successfully!", { description: "Emergency services are being coordinated." });
+      return true;
+
+    } catch (error) {
+      console.error("Failed to send alert to server:", error);
+      toast.error("Failed to send alert to server.", { description: "Please check your connection or try again." });
+      return false;
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSubmitReport = async () => {
     if (!formData.emergencyType || !formData.contact) {
-      alert("Please fill in emergency type and contact number");
+      toast.warning("Please fill in all required fields.", { description: "Emergency type and your contact number are mandatory." });
       return;
     }
 
+    if (!reportCoords) {
+      toast.warning("Location is required.", { description: "Please use your current location or select a point on the map." });
+      return;
+    }
+
+    // --- New Backend Logic ---
+    const serverAlertSuccess = await sendAlertToServer(reportCoords);
+    
+    // We can decide if we want to stop if the server call fails.
+    // For this MVP, we'll continue to the confirmation page regardless,
+    // as the primary alert (server) has already shown its status via toast.
+    if (!serverAlertSuccess) {
+      console.log("Server alert failed, but proceeding to create local report.");
+    }
+    
+    // --- Existing Local Storage Logic ---
     const newReport = createAccidentReport({
       location: formData.location,
       injurySeverity: "moderate",
@@ -113,7 +164,7 @@ export default function AccidentReport() {
                     placeholder="Auto-detecting your location..."
                     className="pl-10"
                     value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    readOnly
                   />
                 </div>
                 <Button variant="link" size="sm" className="mt-2 px-0" onClick={handleUseCurrentLocation}>
@@ -208,9 +259,14 @@ export default function AccidentReport() {
             size="lg" 
             className="w-full bg-emergency hover:opacity-90"
             onClick={handleSubmitReport}
+            disabled={isSending}
           >
-            <AlertTriangle className="w-5 h-5 mr-2" />
-            Send Emergency Alert
+            {isSending ? (
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 mr-2" />
+            )}
+            {isSending ? "Sending Alert..." : "Send Emergency Alert"}
           </Button>
         </>
       ) : report ? (
