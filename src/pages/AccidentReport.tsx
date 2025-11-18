@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, MapPin, Camera, CheckCircle2, Phone, Navigation } from "lucide-react";
+import { AlertTriangle, MapPin, Camera, CheckCircle2, Phone, Navigation, Copy } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,9 +12,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { createAccidentReport, getLatestAccidentReport, AccidentReport as AccidentReportType } from "@/lib/localStorage";
+import MapComponent, { MapMarker } from "@/components/MapComponent";
 
 export default function AccidentReport() {
   const [reported, setReported] = useState(false);
+  const [report, setReport] = useState<AccidentReportType | null>(null);
+  const [formData, setFormData] = useState({
+    location: "",
+    emergencyType: "",
+    notes: "",
+    contact: ""
+  });
+  const [reportCoords, setReportCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    const latestReport = getLatestAccidentReport();
+    if (latestReport && latestReport.status !== "completed") {
+      setReport(latestReport);
+      setReported(true);
+    }
+  }, []);
+
+  const handleUseCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setReportCoords({ lat: latitude, lng: longitude });
+          setFormData({ ...formData, location: "Current GPS Location" });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          alert("Unable to get your location. Please enable location services.");
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by this browser.");
+    }
+  };
+
+  const handleSubmitReport = () => {
+    if (!formData.emergencyType || !formData.contact) {
+      alert("Please fill in emergency type and contact number");
+      return;
+    }
+
+    const newReport = createAccidentReport({
+      location: formData.location,
+      injurySeverity: "moderate",
+      injuryDescription: formData.notes,
+      timestamp: new Date().toISOString(),
+      status: "reported",
+      nearestHospital: "Emergency Care Hospital",
+      photos: []
+    });
+
+    setReport(newReport);
+    setReported(true);
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -51,27 +107,38 @@ export default function AccidentReport() {
                     id="location"
                     placeholder="Auto-detecting your location..."
                     className="pl-10"
-                    defaultValue="Main Street & 5th Avenue"
+                    value={formData.location}
+                    onChange={(e) => setFormData({...formData, location: e.target.value})}
                   />
                 </div>
-                <Button variant="link" size="sm" className="mt-2 px-0">
+                <Button variant="link" size="sm" className="mt-2 px-0" onClick={handleUseCurrentLocation}>
                   <Navigation className="w-4 h-4 mr-2" />
                   Use Current GPS Location
                 </Button>
               </div>
 
               {/* Map Preview */}
-              <div className="h-48 bg-muted rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Location Map View</p>
+              {reportCoords ? (
+                <div className="h-48 rounded-lg overflow-hidden">
+                  <MapComponent
+                    markers={[{ name: 'Report Location', latitude: reportCoords.lat, longitude: reportCoords.lng, color: 'red' } as MapMarker]}
+                    height="200px"
+                    showInfo={false}
+                  />
                 </div>
-              </div>
+              ) : (
+                <div className="h-48 bg-muted rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <MapPin className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Location Map View</p>
+                  </div>
+                </div>
+              )}
 
               {/* Emergency Type */}
               <div>
                 <Label htmlFor="emergency-type">Emergency Type</Label>
-                <Select>
+                <Select value={formData.emergencyType} onValueChange={(value) => setFormData({...formData, emergencyType: value})}>
                   <SelectTrigger id="emergency-type" className="mt-2">
                     <SelectValue placeholder="Select emergency type" />
                   </SelectTrigger>
@@ -103,6 +170,8 @@ export default function AccidentReport() {
                   id="notes"
                   placeholder="Number of people affected, visible injuries, hazards, etc."
                   className="mt-2 min-h-24"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
                 />
               </div>
 
@@ -115,6 +184,8 @@ export default function AccidentReport() {
                     id="contact"
                     placeholder="(555) 123-4567"
                     className="pl-10"
+                    value={formData.contact}
+                    onChange={(e) => setFormData({...formData, contact: e.target.value})}
                   />
                 </div>
               </div>
@@ -125,13 +196,13 @@ export default function AccidentReport() {
           <Button 
             size="lg" 
             className="w-full bg-emergency hover:opacity-90"
-            onClick={() => setReported(true)}
+            onClick={handleSubmitReport}
           >
             <AlertTriangle className="w-5 h-5 mr-2" />
             Send Emergency Alert
           </Button>
         </>
-      ) : (
+      ) : report ? (
         /* Confirmation View */
         <div className="space-y-6">
           <Card className="p-8 text-center bg-success/5 border-success/20">
@@ -142,43 +213,39 @@ export default function AccidentReport() {
             <p className="text-muted-foreground">Emergency services have been notified</p>
           </Card>
 
-          {/* Notification Status */}
+          {/* Report Details */}
           <Card className="p-6">
-            <h3 className="font-semibold text-lg mb-4 text-foreground">Notifications Sent To:</h3>
+            <h3 className="font-semibold text-lg text-foreground mb-4">Report Details</h3>
             <div className="space-y-3">
-              <div className="flex items-center gap-3 p-4 bg-success/5 rounded-lg border border-success/20">
-                <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">City General Hospital</p>
-                  <p className="text-sm text-muted-foreground">2.3 km away • Emergency team alerted</p>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-sm text-muted-foreground">Report ID</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-foreground font-mono">{report.id}</span>
+                  <Button variant="ghost" size="sm">
+                    <Copy className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-4 bg-success/5 rounded-lg border border-success/20">
-                <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">Regional Trauma Center</p>
-                  <p className="text-sm text-muted-foreground">3.5 km away • Ambulance dispatched</p>
-                </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-sm text-muted-foreground">Location</span>
+                <span className="font-semibold text-foreground">{report.location}</span>
               </div>
-              <div className="flex items-center gap-3 p-4 bg-success/5 rounded-lg border border-success/20">
-                <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">Emergency Contacts</p>
-                  <p className="text-sm text-muted-foreground">Family members notified via SMS</p>
-                </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-sm text-muted-foreground">Nearest Hospital</span>
+                <span className="font-semibold text-foreground">{report.nearestHospital}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <span className="font-semibold text-success capitalize">{report.status}</span>
               </div>
             </div>
           </Card>
 
-          {/* Actions */}
-          <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" onClick={() => setReported(false)}>
-              Report Another
-            </Button>
-            <Button>Track Ambulance</Button>
-          </div>
+          <Button variant="outline" className="w-full" onClick={() => setReported(false)}>
+            Submit Another Report
+          </Button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

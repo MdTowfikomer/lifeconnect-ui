@@ -2,6 +2,8 @@ import QuickActionCard from "@/components/QuickActionCard";
 import { Hospital, Ambulance, FolderOpen, CreditCard, AlertTriangle, Activity } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const recentActivity = [
@@ -24,14 +26,11 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">Quick access to emergency services and nearby help</p>
             </div>
           </div>
-          <div className="flex gap-3">
-            <button className="px-6 py-3 bg-emergency text-emergency-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity">
-              Call 911
-            </button>
-            <button className="px-6 py-3 bg-card border border-emergency/20 text-emergency rounded-lg font-semibold hover:bg-emergency/5 transition-colors">
+          <Link to="/accident-report">
+            <Button className="bg-emergency hover:bg-emergency/90 text-emergency-foreground">
               Report Accident
-            </button>
-          </div>
+            </Button>
+          </Link>
         </div>
       </Card>
 

@@ -1,36 +1,55 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Upload, Eye, Download, Calendar } from "lucide-react";
+import { FileText, Upload, Eye, Download, Calendar, Trash2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-const mockFiles = {
-  prescriptions: [
-    { id: 1, name: "Monthly Medication - Dr. Smith", date: "2024-01-15", type: "PDF" },
-    { id: 2, name: "Allergy Medication", date: "2024-01-10", type: "PDF" },
-  ],
-  reports: [
-    { id: 3, name: "Blood Test Results", date: "2024-01-12", type: "PDF" },
-    { id: 4, name: "Annual Physical Report", date: "2023-12-20", type: "PDF" },
-  ],
-  scans: [
-    { id: 5, name: "Chest X-Ray", date: "2024-01-08", type: "IMAGE" },
-    { id: 6, name: "MRI Scan - Brain", date: "2023-11-15", type: "IMAGE" },
-  ],
-  discharge: [
-    { id: 7, name: "Hospital Discharge Summary", date: "2023-10-05", type: "PDF" },
-  ],
-  vaccination: [
-    { id: 8, name: "COVID-19 Vaccination Record", date: "2023-09-01", type: "PDF" },
-    { id: 9, name: "Flu Shot 2023", date: "2023-10-12", type: "PDF" },
-  ],
-};
+import { getMedicalFiles, getMedicalFilesByCategory, addMedicalFile, deleteMedicalFile, MedicalFile } from "@/lib/localStorage";
 
 export default function MedicalVault() {
   const [activeTab, setActiveTab] = useState("prescriptions");
+  const [files, setFiles] = useState<MedicalFile[]>(getMedicalFiles());
+  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const FileCard = ({ file }: { file: any }) => (
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setUploadingFile(file);
+    }
+  };
+
+  const handleUploadFile = () => {
+    if (!uploadingFile) {
+      alert("Please select a file to upload");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64Data = e.target?.result as string;
+      const newFile = addMedicalFile({
+        name: uploadingFile.name,
+        category: activeTab as MedicalFile["category"],
+        type: uploadingFile.type.includes("pdf") ? "PDF" : "FILE",
+        date: new Date().toISOString().split("T")[0],
+        size: uploadingFile.size,
+        data: base64Data
+      });
+      
+      setFiles(getMedicalFiles());
+      setUploadingFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsDataURL(uploadingFile);
+  };
+
+  const handleDeleteFile = (fileId: string) => {
+    deleteMedicalFile(fileId);
+    setFiles(getMedicalFiles());
+  };
+
+  const FileCard = ({ file }: { file: MedicalFile }) => (
     <Card className="p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3 flex-1">
@@ -47,16 +66,27 @@ export default function MedicalVault() {
           </div>
         </div>
         <div className="flex gap-2 ml-4">
-          <Button size="icon" variant="ghost">
+          <Button size="icon" variant="ghost" title="View file">
             <Eye className="w-4 h-4" />
           </Button>
-          <Button size="icon" variant="ghost">
+          <Button size="icon" variant="ghost" title="Download file">
             <Download className="w-4 h-4" />
+          </Button>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="text-destructive hover:text-destructive"
+            onClick={() => handleDeleteFile(file.id)}
+            title="Delete file"
+          >
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       </div>
     </Card>
   );
+
+  const categoryFiles = getMedicalFilesByCategory(activeTab);
 
   return (
     <div className="space-y-6">
@@ -65,11 +95,37 @@ export default function MedicalVault() {
           <h1 className="text-3xl font-bold text-foreground mb-2">Medical Vault</h1>
           <p className="text-muted-foreground">Securely store and access your medical records</p>
         </div>
-        <Button>
-          <Upload className="w-4 h-4 mr-2" />
-          Upload Record
-        </Button>
+        <div className="flex gap-2">
+          <input 
+            ref={fileInputRef}
+            type="file"
+            onChange={handleFileSelect}
+            className="hidden"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          />
+          <Button onClick={() => fileInputRef.current?.click()}>
+            <Upload className="w-4 h-4 mr-2" />
+            Choose File
+          </Button>
+          {uploadingFile && (
+            <Button onClick={handleUploadFile} className="bg-success hover:bg-success/90">
+              Upload "{uploadingFile.name}"
+            </Button>
+          )}
+        </div>
       </div>
+
+      {uploadingFile && (
+        <Card className="p-4 bg-primary/5 border-primary/20">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">{uploadingFile.name}</p>
+              <p className="text-xs text-muted-foreground">{(uploadingFile.size / 1024).toFixed(2)} KB</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
@@ -82,62 +138,77 @@ export default function MedicalVault() {
 
         <TabsContent value="prescriptions" className="space-y-4 mt-6">
           <div className="grid gap-4">
-            {mockFiles.prescriptions.map((file) => (
-              <FileCard key={file.id} file={file} />
-            ))}
+            {categoryFiles.length > 0 ? (
+              categoryFiles.map((file) => (
+                <FileCard key={file.id} file={file} />
+              ))
+            ) : (
+              <Card className="p-8 text-center">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">No prescriptions uploaded yet</p>
+              </Card>
+            )}
           </div>
-          <Button variant="outline" className="w-full">
-            <Upload className="w-4 h-4 mr-2" />
-            Add Prescription
-          </Button>
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4 mt-6">
           <div className="grid gap-4">
-            {mockFiles.reports.map((file) => (
-              <FileCard key={file.id} file={file} />
-            ))}
+            {categoryFiles.length > 0 ? (
+              categoryFiles.map((file) => (
+                <FileCard key={file.id} file={file} />
+              ))
+            ) : (
+              <Card className="p-8 text-center">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">No reports uploaded yet</p>
+              </Card>
+            )}
           </div>
-          <Button variant="outline" className="w-full">
-            <Upload className="w-4 h-4 mr-2" />
-            Add Report
-          </Button>
         </TabsContent>
 
         <TabsContent value="scans" className="space-y-4 mt-6">
           <div className="grid gap-4">
-            {mockFiles.scans.map((file) => (
-              <FileCard key={file.id} file={file} />
-            ))}
+            {categoryFiles.length > 0 ? (
+              categoryFiles.map((file) => (
+                <FileCard key={file.id} file={file} />
+              ))
+            ) : (
+              <Card className="p-8 text-center">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">No scans uploaded yet</p>
+              </Card>
+            )}
           </div>
-          <Button variant="outline" className="w-full">
-            <Upload className="w-4 h-4 mr-2" />
-            Add Scan
-          </Button>
         </TabsContent>
 
         <TabsContent value="discharge" className="space-y-4 mt-6">
           <div className="grid gap-4">
-            {mockFiles.discharge.map((file) => (
-              <FileCard key={file.id} file={file} />
-            ))}
+            {categoryFiles.length > 0 ? (
+              categoryFiles.map((file) => (
+                <FileCard key={file.id} file={file} />
+              ))
+            ) : (
+              <Card className="p-8 text-center">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">No discharge summaries uploaded yet</p>
+              </Card>
+            )}
           </div>
-          <Button variant="outline" className="w-full">
-            <Upload className="w-4 h-4 mr-2" />
-            Add Discharge Summary
-          </Button>
         </TabsContent>
 
         <TabsContent value="vaccination" className="space-y-4 mt-6">
           <div className="grid gap-4">
-            {mockFiles.vaccination.map((file) => (
-              <FileCard key={file.id} file={file} />
-            ))}
+            {categoryFiles.length > 0 ? (
+              categoryFiles.map((file) => (
+                <FileCard key={file.id} file={file} />
+              ))
+            ) : (
+              <Card className="p-8 text-center">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">No vaccination records uploaded yet</p>
+              </Card>
+            )}
           </div>
-          <Button variant="outline" className="w-full">
-            <Upload className="w-4 h-4 mr-2" />
-            Add Vaccination Record
-          </Button>
         </TabsContent>
       </Tabs>
     </div>

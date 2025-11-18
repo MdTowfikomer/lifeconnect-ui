@@ -1,4 +1,4 @@
-import { MapPin, Clock, Bed, Activity } from "lucide-react";
+import { MapPin, Clock, Bed, Activity, Users } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Link } from "react-router-dom";
@@ -12,7 +12,9 @@ interface HospitalCardProps {
   icuBeds: number;
   generalBeds: number;
   ventilators: number;
+  onDutyDoctors: number;
   readiness: "high" | "medium" | "low";
+  specialists?: string;
 }
 
 export default function HospitalCard({
@@ -24,7 +26,9 @@ export default function HospitalCard({
   icuBeds,
   generalBeds,
   ventilators,
-  readiness
+  onDutyDoctors,
+  readiness,
+  specialists
 }: HospitalCardProps) {
   const readinessColor = {
     high: "bg-success/10 text-success border-success/20",
@@ -41,17 +45,22 @@ export default function HospitalCard({
             <MapPin className="w-4 h-4" />
             <span>{address}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
             <Clock className="w-4 h-4" />
             <span>{distance} • {eta}</span>
           </div>
+          {specialists && (
+            <div className="text-xs text-primary mt-2">
+              <strong>Specialists:</strong> {specialists}
+            </div>
+          )}
         </div>
         <Badge className={readinessColor[readiness]}>
           {readiness.toUpperCase()}
         </Badge>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-4 py-4 border-y border-border">
+      <div className="grid grid-cols-4 gap-4 mb-4 py-4 border-y border-border">
         <div className="text-center">
           <div className="flex items-center justify-center gap-1 mb-1">
             <Bed className="w-4 h-4 text-primary" />
@@ -72,6 +81,13 @@ export default function HospitalCard({
             <p className="text-2xl font-bold text-foreground">{ventilators}</p>
           </div>
           <p className="text-xs text-muted-foreground">Ventilators</p>
+        </div>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1 mb-1">
+            <Users className={`w-4 h-4 ${onDutyDoctors === 0 ? 'text-destructive' : 'text-success'}`} />
+            <p className={`text-2xl font-bold ${onDutyDoctors === 0 ? 'text-destructive' : 'text-foreground'}`}>{onDutyDoctors}</p>
+          </div>
+          <p className="text-xs text-muted-foreground">On-duty Doctors</p>
         </div>
       </div>
 
