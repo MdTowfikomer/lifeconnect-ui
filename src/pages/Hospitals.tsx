@@ -14,7 +14,7 @@ import {
 const hospitals = [
   {
     id: "1",
-    name: "Aditya Hospital – Abids",
+    name: "Aditya Hospital - Abids",
     address: "Abids, Hyderabad",
     distance: "0.6 km",
     eta: "~2 mins",

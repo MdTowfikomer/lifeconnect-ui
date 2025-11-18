@@ -52,6 +52,11 @@ export default function AccidentReport() {
     }
   };
 
+  const handleMapClick = (coords: { lat: number; lng: number }) => {
+    setReportCoords(coords);
+    setFormData({ ...formData, location: "Custom Location from Map" });
+  };
+
   const handleSubmitReport = () => {
     if (!formData.emergencyType || !formData.contact) {
       alert("Please fill in emergency type and contact number");
@@ -118,22 +123,28 @@ export default function AccidentReport() {
               </div>
 
               {/* Map Preview */}
-              {reportCoords ? (
-                <div className="h-48 rounded-lg overflow-hidden">
-                  <MapComponent
-                    markers={[{ name: 'Report Location', latitude: reportCoords.lat, longitude: reportCoords.lng, color: 'red' } as MapMarker]}
-                    height="200px"
-                    showInfo={false}
-                  />
-                </div>
-              ) : (
-                <div className="h-48 bg-muted rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <MapPin className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Location Map View</p>
+              <div className="relative">
+                {reportCoords ? (
+                  <div className="h-48 rounded-lg overflow-hidden">
+                    <MapComponent
+                      markers={[{ name: 'Report Location', latitude: reportCoords.lat, longitude: reportCoords.lng, color: 'red' } as MapMarker]}
+                      height="200px"
+                      showInfo={false}
+                      onMapClick={handleMapClick}
+                    />
                   </div>
+                ) : (
+                  <div className="h-48 bg-muted rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <MapPin className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Location Map View</p>
+                    </div>
+                  </div>
+                )}
+                <div className="absolute bottom-2 right-2 bg-background/80 p-1.5 rounded-md text-xs text-muted-foreground">
+                  Click on the map to set a precise location
                 </div>
-              )}
+              </div>
 
               {/* Emergency Type */}
               <div>

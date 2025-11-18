@@ -48,19 +48,13 @@ interface MapComponentProps {
   height?: string;
   showInfo?: boolean;
   zoom?: number;
+  onMapClick?: (coords: { lat: number; lng: number }) => void;
 }
 
-const MapView = ({ markers, zoom = 13 }: { markers: MapMarker[]; zoom: number }) => {
-  const map = useMapEvents({
-    load() {
-      if (markers.length === 1) {
-        map.setView([markers[0].latitude, markers[0].longitude], zoom);
-      } else if (markers.length > 1) {
-        const bounds = L.latLngBounds(
-          markers.map(m => [m.latitude, m.longitude] as [number, number])
-        );
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
+const MapClickHandler = ({ onMapClick }: { onMapClick: (coords: { lat: number; lng: number }) => void }) => {
+  useMapEvents({
+    click(e) {
+      onMapClick(e.latlng);
     },
   });
   return null;
@@ -77,6 +71,7 @@ export default function MapComponent({
   height = "400px",
   showInfo = true,
   zoom = 13,
+  onMapClick,
 }: MapComponentProps) {
   const mapRef = useRef(null);
 
@@ -102,12 +97,15 @@ export default function MapComponent({
   return (
     <div className="rounded-lg overflow-hidden border border-border">
       <MapContainer
+        center={displayMarkers.length > 0 ? [displayMarkers[0].latitude, displayMarkers[0].longitude] : undefined}
+        zoom={zoom}
         style={{ height, width: '100%' }}
       >
         <TileLayer 
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapView markers={displayMarkers} zoom={zoom} />
+        {onMapClick && <MapClickHandler onMapClick={onMapClick} />}
         
         {/* Route polyline */}
         {routeCoordinates && (
