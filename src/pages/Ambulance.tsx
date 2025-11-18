@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -14,12 +15,99 @@ import {
 import { createAmbulanceBooking, getLatestAmbulanceBooking, AmbulanceBooking } from "@/lib/localStorage";
 import MapComponent, { MapMarker } from "@/components/MapComponent";
 
-// Basic hospital data with coordinates (placeholders, adjust as needed)
-const hospitals = [
-  { id: "1", name: "City General Hospital", distance: "2.3 km", eta: "8 mins", lat: 17.3850, lng: 78.4867 },
-  { id: "2", name: "St. Mary's Medical Center", distance: "4.1 km", eta: "12 mins", lat: 17.3600, lng: 78.5000 },
-  { id: "3", name: "Emergency Care Hospital", distance: "1.5 km", eta: "5 mins", lat: 17.4000, lng: 78.4800 },
+const hospitalsData = [
+  {
+    id: "1",
+    name: "Aditya Hospital – Abids",
+    address: "Abids, Hyderabad",
+    phone: "(040) 1234-5678",
+    distance: "0.6 km",
+    eta: "2 mins",
+    readiness: "high",
+    icuBeds: 5,
+    totalICUBeds: 5,
+    generalBeds: 20,
+    totalGeneralBeds: 20,
+    ventilators: 2,
+    totalVentilators: 2,
+    specialists: "Cardiology, Neurology",
+    lat: 17.3900,
+    lng: 78.4800,
+  },
+  {
+    id: "2",
+    name: "Udai Omni Hospital",
+    address: "Chapel Road, Abids, Hyderabad",
+    phone: "(040) 2345-6789",
+    distance: "1.2 km",
+    eta: "4 mins",
+    readiness: "high",
+    icuBeds: 8,
+    totalICUBeds: 8,
+    generalBeds: 35,
+    totalGeneralBeds: 35,
+    ventilators: 4,
+    totalVentilators: 4,
+    specialists: "Orthopaedics, Trauma",
+    lat: 17.3950,
+    lng: 78.4750,
+  },
+  {
+    id: "3",
+    name: "Kamineni Hospital King Koti",
+    address: "King Koti, Hyderabad",
+    phone: "(040) 3456-7890",
+    distance: "1.8 km",
+    eta: "6 mins",
+    readiness: "high",
+    icuBeds: 10,
+    totalICUBeds: 10,
+    generalBeds: 50,
+    totalGeneralBeds: 50,
+    ventilators: 6,
+    totalVentilators: 6,
+    specialists: "General Surgery, Critical Care",
+    lat: 17.3850,
+    lng: 78.4867,
+  },
+  {
+    id: "4",
+    name: "Hope Children’s Hospital",
+    address: "Lakdi-ka-pul, Hyderabad",
+    phone: "(040) 4567-8901",
+    distance: "2.0 km",
+    eta: "7 mins",
+    readiness: "medium",
+    icuBeds: 4,
+    totalICUBeds: 4,
+    generalBeds: 15,
+    totalGeneralBeds: 15,
+    ventilators: 1,
+    totalVentilators: 1,
+    specialists: "Paediatrics, Neonatal ICU",
+    lat: 17.3980,
+    lng: 78.4650,
+  },
+  {
+    id: "5",
+    name: "CARE Hospital Malakpet",
+    address: "Malakpet, Hyderabad",
+    phone: "(040) 5678-9012",
+    distance: "3.5 km",
+    eta: "10 mins",
+    readiness: "high",
+    icuBeds: 12,
+    totalICUBeds: 12,
+    generalBeds: 40,
+    totalGeneralBeds: 40,
+    ventilators: 5,
+    totalVentilators: 5,
+    specialists: "Multi-speciality, Ventilator Support",
+    lat: 17.3700,
+    lng: 78.4900,
+  }
 ];
+
 
 export default function Ambulance() {
   const [booked, setBooked] = useState(false);
@@ -31,6 +119,7 @@ export default function Ambulance() {
     ambulanceType: "icu",
     notes: ""
   });
+  const location = useLocation();
 
   useEffect(() => {
     const latestBooking = getLatestAmbulanceBooking();
@@ -39,6 +128,15 @@ export default function Ambulance() {
       setBooked(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (location.state && location.state.hospitalName) {
+      const hospital = hospitalsData.find(h => h.name === location.state.hospitalName);
+      if (hospital) {
+        setFormData(prevData => ({ ...prevData, destinationHospital: hospital.id }));
+      }
+    }
+  }, [location.state]);
 
   const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -64,7 +162,7 @@ export default function Ambulance() {
       return;
     }
 
-    const hospital = hospitals.find(h => h.id === formData.destinationHospital);
+    const hospital = hospitalsData.find(h => h.id === formData.destinationHospital);
     if (!hospital) return;
 
     const newBooking = createAmbulanceBooking({
@@ -120,7 +218,7 @@ export default function Ambulance() {
                     <SelectValue placeholder="Select destination hospital" />
                   </SelectTrigger>
                   <SelectContent>
-                    {hospitals.map((hospital) => (
+                    {hospitalsData.map((hospital) => (
                       <SelectItem key={hospital.id} value={hospital.id}>
                         {hospital.name} - {hospital.distance}
                       </SelectItem>
@@ -161,7 +259,7 @@ export default function Ambulance() {
             <Card className="p-6">
               <h3 className="font-semibold text-lg mb-4 text-foreground">Route Preview</h3>
               {(() => {
-                const selectedHospital = hospitals.find(h => h.id === formData.destinationHospital);
+                const selectedHospital = hospitalsData.find(h => h.id === formData.destinationHospital);
                 const markers: MapMarker[] = [];
 
                 if (userLocation) {
@@ -225,7 +323,7 @@ export default function Ambulance() {
           <Card className="p-6">
             <h3 className="font-semibold text-lg mb-4 text-foreground">Live Tracking</h3>
             {(() => {
-              const selectedHospital = hospitals.find(h => h.id === booking?.hospitalId);
+              const selectedHospital = hospitalsData.find(h => h.id === booking?.hospitalId);
               const markers: MapMarker[] = [];
 
               if (booking) {

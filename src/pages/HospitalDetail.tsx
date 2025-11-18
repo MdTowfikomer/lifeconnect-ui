@@ -152,10 +152,12 @@ export default function HospitalDetail() {
             <Badge className={readinessColor[hospital.readiness]}>{hospital.readiness.toUpperCase()} READINESS</Badge>
           </div>
           <div className="flex gap-3">
-            <Button className="flex-1">
-              <Navigation className="w-4 h-4 mr-2" />
-              Set as Destination
-            </Button>
+            <Link to="/ambulance" state={{ hospitalName: hospital.name }} className="flex-1">
+              <Button className="w-full">
+                <Navigation className="w-4 h-4 mr-2" />
+                Set as Destination
+              </Button>
+            </Link>
             <Button variant="outline" className="flex-1">Request Access</Button>
           </div>
         </div>

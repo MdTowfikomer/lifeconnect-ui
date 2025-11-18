@@ -3,12 +3,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import Layout from "./components/Layout";
+
 import Dashboard from "./pages/Dashboard";
 import Hospitals from "./pages/Hospitals";
 import HospitalDetail from "./pages/HospitalDetail";
 import Ambulance from "./pages/Ambulance";
-import AccidentReport from "./pages/AccidentReport";
+import AccidentReport from "./pages/AccidentReport"; 
 import MedicalVault from "./pages/MedicalVault";
 import EmergencyCard from "./pages/EmergencyCard";
 import DoctorPortal from "./pages/DoctorPortal";
@@ -16,6 +18,9 @@ import PatientOverview from "./pages/PatientOverview";
 import HospitalAdmin from "./pages/HospitalAdmin";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import PatientSurvey from "./pages/PatientSurvey";
+import PublicPatientProfile from "./pages/PublicPatientProfile";
 
 const queryClient = new QueryClient();
 
@@ -24,9 +29,16 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout><Dashboard /></Layout>} />
+
+          {/* AUTH ROUTES */}
+          <Route path="/" element={<Login />} />
+          <Route path="/patient-survey" element={<PatientSurvey />} />
+
+          {/* FULL LAYOUT ROUTES */}
+          <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
           <Route path="/hospitals" element={<Layout><Hospitals /></Layout>} />
           <Route path="/hospitals/:id" element={<Layout><HospitalDetail /></Layout>} />
           <Route path="/ambulance" element={<Layout><Ambulance /></Layout>} />
@@ -37,9 +49,16 @@ const App = () => (
           <Route path="/doctor-portal/patient/:id" element={<Layout><PatientOverview /></Layout>} />
           <Route path="/hospital-admin" element={<Layout><HospitalAdmin /></Layout>} />
           <Route path="/profile" element={<Layout><Profile /></Layout>} />
+
+          {/* PUBLIC ROUTE */}
+          <Route path="/public-profile" element={<PublicPatientProfile />} />
+
+          {/* NOT FOUND */}
           <Route path="*" element={<NotFound />} />
+
         </Routes>
       </BrowserRouter>
+
     </TooltipProvider>
   </QueryClientProvider>
 );
