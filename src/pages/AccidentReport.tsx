@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { AlertTriangle, MapPin, Camera, CheckCircle2, Phone, Navigation, Copy, Loader2 } from "lucide-react";
+import { AlertTriangle, MapPin, Camera, CheckCircle2, Phone, Navigation, Copy, Loader2, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -27,6 +27,9 @@ export default function AccidentReport() {
     contact: ""
   });
   const [reportCoords, setReportCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const latestReport = getLatestAccidentReport();
@@ -58,6 +61,27 @@ export default function AccidentReport() {
   const handleMapClick = (coords: { lat: number; lng: number }) => {
     setReportCoords(coords);
     setFormData({ ...formData, location: "Custom Location from Map" });
+  };
+
+  const handlePhotoUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setPhotoPreview(previewUrl);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if(fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const sendAlertToServer = async (location: { lat: number; lng: number }) => {
@@ -106,9 +130,6 @@ export default function AccidentReport() {
     // --- New Backend Logic ---
     const serverAlertSuccess = await sendAlertToServer(reportCoords);
     
-    // We can decide if we want to stop if the server call fails.
-    // For this MVP, we'll continue to the confirmation page regardless,
-    // as the primary alert (server) has already shown its status via toast.
     if (!serverAlertSuccess) {
       console.log("Server alert failed, but proceeding to create local report.");
     }
@@ -121,7 +142,7 @@ export default function AccidentReport() {
       timestamp: new Date().toISOString(),
       status: "reported",
       nearestHospital: "Emergency Care Hospital",
-      photos: []
+      photos: photoFile ? [photoFile.name] : []
     });
 
     setReport(newReport);
@@ -218,11 +239,35 @@ export default function AccidentReport() {
               {/* Photo Upload */}
               <div>
                 <Label htmlFor="photo">Photo (Optional)</Label>
-                <div className="mt-2 border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                  <Camera className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Click to upload or take photo</p>
-                  <p className="text-xs text-muted-foreground mt-1">Helps emergency responders assess the situation</p>
-                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handlePhotoChange}
+                  className="hidden"
+                  accept="image/*"
+                />
+                {photoPreview ? (
+                  <div className="mt-2 relative">
+                    <img src={photoPreview} alt="Accident preview" className="rounded-lg w-full h-auto max-h-64 object-contain border" />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-7 w-7"
+                      onClick={handleRemovePhoto}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    className="mt-2 border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    onClick={handlePhotoUploadClick}
+                  >
+                    <Camera className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Click to upload or take photo</p>
+                    <p className="text-xs text-muted-foreground mt-1">Helps emergency responders assess the situation</p>
+                  </div>
+                )}
               </div>
 
               {/* Additional Notes */}
