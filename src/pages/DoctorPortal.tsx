@@ -3,10 +3,43 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, User, Lock } from "lucide-react";
+import { QrCode, User, Lock, Search } from "lucide-react";
+import QRCode from "react-qr-code";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+
+// Mock patient data structure, similar to what's in localStorage
+const MOCK_PATIENT_DETAILS = {
+  dateOfBirth: "1990-01-01",
+  bloodType: "O+",
+  allergies: "None",
+  medicalHistory: "N/A",
+  emergencyContacts: [{ id: 1, name: "Jane Doe", relationship: "Spouse", phone: "555-555-5555" }],
+};
 
 export default function DoctorPortal() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState("");
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+
+  const handleGenerateQrCode = (patient: any) => {
+    const criticalInfo = {
+      name: patient.name,
+      ...MOCK_PATIENT_DETAILS, // Use mock data for fields not in the list
+    };
+    const encodedData = btoa(JSON.stringify(criticalInfo));
+    const publicProfileUrl = `${window.location.origin}/public-profile?data=${encodedData}`;
+    
+    setQrCodeData(publicProfileUrl);
+    setSelectedPatient(patient);
+    setIsQrModalOpen(true);
+  };
 
   if (isLoggedIn) {
     return (
@@ -17,21 +50,13 @@ export default function DoctorPortal() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 gap-4">
           <Card className="p-6 text-center hover:shadow-lg transition-shadow cursor-pointer">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <QrCode className="w-8 h-8 text-primary" />
+              <Search className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="font-semibold text-lg text-foreground mb-2">Scan Patient QR</h3>
-            <p className="text-sm text-muted-foreground">Access patient's emergency card</p>
-          </Card>
-
-          <Card className="p-6 text-center hover:shadow-lg transition-shadow cursor-pointer">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-8 h-8 text-primary" />
-            </div>
-            <h3 className="font-semibold text-lg text-foreground mb-2">Enter PIN</h3>
-            <p className="text-sm text-muted-foreground">Access via patient PIN</p>
+            <h3 className="font-semibold text-lg text-foreground mb-2">Find Patient</h3>
+            <p className="text-sm text-muted-foreground">Search by name or ID</p>
           </Card>
 
           <Card className="p-6 text-center hover:shadow-lg transition-shadow cursor-pointer border-emergency/20 bg-emergency/5">
@@ -52,8 +77,8 @@ export default function DoctorPortal() {
               { name: "Sarah Johnson", id: "P-12346", lastVisit: "1 day ago", status: "Discharged" },
               { name: "Michael Chen", id: "P-12347", lastVisit: "3 days ago", status: "Follow-up" },
             ].map((patient) => (
-              <div key={patient.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer">
-                <div className="flex items-center gap-4">
+              <div key={patient.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-4 cursor-pointer">
                   <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
                     <User className="w-6 h-6 text-primary" />
                   </div>
@@ -62,14 +87,37 @@ export default function DoctorPortal() {
                     <p className="text-sm text-muted-foreground">ID: {patient.id}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">{patient.lastVisit}</p>
-                  <p className="text-sm font-medium text-primary">{patient.status}</p>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">{patient.lastVisit}</p>
+                    <p className="text-sm font-medium text-primary">{patient.status}</p>
+                  </div>
+                  <Button variant="outline" size="icon" onClick={() => handleGenerateQrCode(patient)}>
+                    <QrCode className="w-5 h-5" />
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
         </Card>
+
+        {/* QR Code Modal */}
+        <Dialog open={isQrModalOpen} onOpenChange={setIsQrModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Emergency QR Code for {selectedPatient?.name}</DialogTitle>
+              <DialogDescription>
+                This QR code links to a public profile with critical medical information.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center p-4 bg-white rounded-lg">
+              {qrCodeData && <QRCode value={qrCodeData} size={256} />}
+            </div>
+            <p className="text-center text-sm text-muted-foreground">
+              Share with authorized medical personnel only.
+            </p>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
