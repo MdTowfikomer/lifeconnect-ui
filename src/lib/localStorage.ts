@@ -40,7 +40,7 @@ export interface AccidentReport {
   injurySeverity: "minor" | "moderate" | "severe" | "critical";
   injuryDescription: string;
   timestamp: string;
-  status: "reported" | "confirmed" | "en-route" | "at-location";
+  status: "reported" | "confirmed" | "en-route" | "at-location" | "completed";
   nearestHospital: string;
   photos: string[];
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export default function DoctorPortal() {
   const [qrCodeData, setQrCodeData] = useState("");
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const navigate = useNavigate();
 
   const handleGenerateQrCode = (patient: any) => {
     const criticalInfo = {
@@ -77,8 +79,11 @@ export default function DoctorPortal() {
               { name: "Sarah Johnson", id: "P-12346", lastVisit: "1 day ago", status: "Discharged" },
               { name: "Michael Chen", id: "P-12347", lastVisit: "3 days ago", status: "Follow-up" },
             ].map((patient) => (
-              <div key={patient.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-4 cursor-pointer">
+              <div key={patient.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                <div 
+                  className="flex items-center gap-4 cursor-pointer"
+                  onClick={() => navigate(`/doctor-portal/patient/${patient.id}`)}
+                >
                   <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
                     <User className="w-6 h-6 text-primary" />
                   </div>
@@ -92,7 +97,7 @@ export default function DoctorPortal() {
                     <p className="text-sm text-muted-foreground">{patient.lastVisit}</p>
                     <p className="text-sm font-medium text-primary">{patient.status}</p>
                   </div>
-                  <Button variant="outline" size="icon" onClick={() => handleGenerateQrCode(patient)}>
+                  <Button variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); handleGenerateQrCode(patient); }}>
                     <QrCode className="w-5 h-5" />
                   </Button>
                 </div>

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -9,9 +9,11 @@ import {
   CreditCard,
   Stethoscope,
   Building2,
-  User
+  User,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface LayoutProps {
   children: ReactNode;
@@ -31,6 +33,56 @@ const navItems = [
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const [isSendingSos, setIsSendingSos] = useState(false);
+
+  const handleSosClick = () => {
+    setIsSendingSos(true);
+    toast.info("Requesting your location for the emergency alert...");
+
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by this browser.");
+      setIsSendingSos(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const location = { lat: latitude, lng: longitude };
+        
+        try {
+          // Using a hardcoded patientId for MVP purposes
+          const patientId = '12345'; 
+          
+          const response = await fetch('http://localhost:3001/api/send-alert', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ patientId, location }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.message || 'An unknown error occurred while sending the alert.');
+          }
+
+          toast.success("Emergency SOS sent successfully!", { description: "Help is on the way." });
+        } catch (error) {
+          console.error("Failed to send SOS alert:", error);
+          toast.error("Failed to send SOS alert.", { description: "Please check your connection or try again." });
+        } finally {
+          setIsSendingSos(false);
+        }
+      },
+      (error) => {
+        console.error("Error getting location for SOS:", error);
+        toast.error("Unable to get your location.", { description: "Please enable location services to send an SOS." });
+        setIsSendingSos(false);
+      }
+    );
+  };
 
   return (
     <div className="flex min-h-screen bg-muted/30">
@@ -80,8 +132,17 @@ export default function Layout({ children }: LayoutProps) {
               <p className="text-sm text-muted-foreground">Stay healthy, stay connected</p>
             </div>
             <div className="flex items-center gap-4">
-              <button className="px-4 py-2 bg-emergency text-emergency-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity">
-                Emergency SOS
+              <button 
+                className="px-4 py-2 bg-emergency text-emergency-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity flex items-center justify-center min-w-[150px]"
+                onClick={handleSosClick}
+                disabled={isSendingSos}
+              >
+                {isSendingSos ? (
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 mr-2" />
+                )}
+                {isSendingSos ? "Sending..." : "Emergency SOS"}
               </button>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
